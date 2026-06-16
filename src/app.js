@@ -10,7 +10,15 @@ const app = express();
 
 // credentials:true + an explicit origin are required for the browser to send
 // and store the auth cookie on cross-origin requests.
-app.use(cors({ origin: env.CLIENT_URL, credentials: true }));
+app.use(
+  cors({
+    origin: [
+      "http://localhost:5173",
+      "https://flexi-fold-frontend.vercel.app",
+    ],
+    credentials: true,
+  })
+);
 app.use(express.json());
 app.use(cookieParser());
 app.use(morgan("dev"));
