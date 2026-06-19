@@ -35,7 +35,8 @@ create table if not exists leads (
   urgency     text default 'Medium',              -- High | Medium | Low
   designation text default 'Architect',           -- Architect | Builder | Contractor | ...
   language    text default 'English',             -- English | Hindi | Malayalam | Tamil | Arabic
-  status      text default 'New',                 -- New | Discussion | Follow-up | Converted | Failed
+  status      text default 'New'
+              check (status in ('New','Pending','Discussion','Follow-up','In Progress','Converted','Failed','Rejected')),
   notes       text,
   partner_id  uuid references users(id),          -- partner who added the lead
   assigned_to uuid references users(id),          -- sales/telecaller handling it

@@ -6,6 +6,7 @@ const router = Router();
 router.get("/", salesTeamController.list);
 router.get("/:id", salesTeamController.getOne);
 router.post("/", salesTeamController.create);
+router.put("/:id/reset-password", salesTeamController.resetPassword);
 router.put("/:id", salesTeamController.update);
 router.delete("/:id", salesTeamController.remove);
 

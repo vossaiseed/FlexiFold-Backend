@@ -7,6 +7,7 @@ import salesTeamRoutes from "./salesTeamRoutes.js";
 import telecallerRoutes from "./telecallerRoutes.js";
 import conversionRoutes from "./conversionRoutes.js";
 import userRoutes from "./userRoutes.js";
+import settingsRoutes from "./settingsRoutes.js";
 
 const router = Router();
 
@@ -18,5 +19,6 @@ router.use("/lead-managers", leadManagerRoutes);
 router.use("/sales-team", salesTeamRoutes);
 router.use("/telecallers", telecallerRoutes);
 router.use("/conversions", conversionRoutes);
+router.use("/settings", settingsRoutes);
 
 export default router;

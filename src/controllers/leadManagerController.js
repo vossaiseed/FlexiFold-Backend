@@ -40,6 +40,31 @@ export const create = async (req, res, next) => {
     if (!name || !phone || !password) {
       return res.status(400).json({ message: "name, phone and password are required" });
     }
+
+    // Create a Supabase Auth account so the lead manager can log in (phone + password).
+    // Login finds them by phoneNumber in user_metadata, then signs in with the
+    // account's email — so store the phone in metadata and use the given email
+    // (or a synthetic one from the phone when none given). role is "lead-manager".
+    const digits = String(phone || "").replace(/\D/g, "");
+    const loginEmail = email || (digits ? `${digits}@lm.flexifold.app` : null);
+    if (loginEmail) {
+      const { error: authError } = await supabase.auth.admin.createUser({
+        email: loginEmail,
+        password,
+        email_confirm: true, // skip email verification so they can log in now
+        user_metadata: {
+          name,
+          phoneNumber: phone,
+          location,
+          role: "lead-manager",
+        },
+      });
+      // A duplicate just means an account already exists — don't block the row.
+      if (authError) {
+        console.warn("Could not create auth login for lead manager:", authError.message);
+      }
+    }
+
     const { data, error } = await supabase
       .from("lead_managers")
       .insert([{ name, phone, email, location, password, photo }])
@@ -50,7 +75,7 @@ export const create = async (req, res, next) => {
     }
     if (error) throw error;
     res.status(201).json({ message: "Lead manager created successfully", data });
-   
+
   } catch (err) {
     next(err);
   }
