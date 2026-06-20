@@ -199,6 +199,9 @@ export const update = async (req, res, next) => {
       "name", "phone", "whatsapp", "email", "location", "state",
       "requirement", "units", "urgency", "designation", "language",
       "status", "notes", "partner_id", "assigned_to",
+      "assigned_sales_id", "assigned_sales_name",
+      "assigned_telecaller_id", "assigned_telecaller_name",
+      "conversion_amount", "sale_notes",
       "last_call_at", "next_follow_up", "call_count",
     ];
     const updates = {};

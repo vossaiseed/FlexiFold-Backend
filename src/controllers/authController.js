@@ -84,12 +84,13 @@ const normalizePhone = (p) => String(p ?? "").replace(/\D/g, "");
 // Auth email may be synthetic (derived from the phone) when no email was given,
 // so we derive the same value deterministically here.
 const PHONE_SOURCES = [
-  { table: "lead_managers", role: "lead-manager", domain: "lm.flexifold.app" },
-  { table: "partner",       role: "partner",      domain: "partner.flexifold.app" },
-  // Sales staff (incl. telecallers) use the telecaller dashboard — there is no
-  // dedicated /sales area, so map them to the role that has one.
-  { table: "salesstaff",    role: "telecaller",   domain: "sales.flexifold.app" },
-  { table: "users",         role: null,           domain: null }, // registered users
+  { table: "lead_managers",    role: "lead-manager",    domain: "lm.flexifold.app" },
+  { table: "project_managers", role: "project-manager", domain: "pm.flexifold.app" },
+  { table: "telecallers",      role: "telecaller",      domain: "tc.flexifold.app" },
+  { table: "partner",          role: "partner",         domain: "partner.flexifold.app" },
+  // Sales Team members live in salesstaff and use the dedicated /sales dashboard.
+  { table: "salesstaff",       role: "sales",           domain: "sales.flexifold.app" },
+  { table: "users",            role: null,              domain: null }, // registered users
 ];
 
 // Find a login record by phone across the app tables. Uses plain SELECTs, so it

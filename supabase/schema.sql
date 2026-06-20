@@ -40,6 +40,12 @@ create table if not exists leads (
   notes       text,
   partner_id  uuid references users(id),          -- partner who added the lead
   assigned_to uuid references users(id),          -- sales/telecaller handling it
+  assigned_sales_id   text,                        -- salesstaff.id (no FK; separate table)
+  assigned_sales_name text,                        -- denormalized for easy display
+  assigned_telecaller_id   text,                   -- telecallers.id (no FK; separate table)
+  assigned_telecaller_name text,                   -- denormalized for easy display
+  conversion_amount   numeric,                     -- final deal value (set by Sales)
+  sale_notes          text,                         -- Sales remarks
   created_at  timestamptz not null default now()
 );
 
@@ -172,6 +178,86 @@ create table if not exists salesstaff (
 );
 
 -- ---------------------------------------------------------------------------
+-- telecallers  (admin "Add Telecaller" form / Telecaller login)
+-- ---------------------------------------------------------------------------
+create table if not exists telecallers (
+  id          uuid primary key default gen_random_uuid(),
+  name        text not null,
+  phone       text not null,
+  email       text,
+  location    text,
+  password    text,
+  photo       text,
+  created_at  timestamptz not null default now()
+);
+
+-- ---------------------------------------------------------------------------
+-- project_managers  (admin "Add Project Manager" form / Project Manager login)
+-- ---------------------------------------------------------------------------
+create table if not exists project_managers (
+  id          uuid primary key default gen_random_uuid(),
+  name        text not null,
+  phone       text not null,
+  email       text,
+  location    text,
+  password    text,
+  photo       text,
+  created_at  timestamptz not null default now()
+);
+
+-- ---------------------------------------------------------------------------
+-- CRM fulfilment pipeline (after a lead is approved & assigned)
+-- ---------------------------------------------------------------------------
+create table if not exists site_visits (
+  id          uuid primary key default gen_random_uuid(),
+  lead_id     uuid references leads(id) on delete cascade,
+  assigned_to uuid,                                   -- sales staff who handled it
+  visit_date  timestamptz,
+  location    text,
+  notes       text,
+  status      text default 'Scheduled'
+              check (status in ('Scheduled','Completed','Cancelled','Rescheduled')),
+  created_at  timestamptz not null default now()
+);
+
+create table if not exists measurements (
+  id            uuid primary key default gen_random_uuid(),
+  lead_id       uuid references leads(id) on delete cascade,
+  site_visit_id uuid references site_visits(id) on delete set null,
+  details       text,
+  file_urls     text[] default '{}',                 -- Supabase Storage public URLs
+  uploaded_by   uuid,
+  status        text default 'Uploaded'
+                check (status in ('Pending','Uploaded','Approved','Rejected')),
+  created_at    timestamptz not null default now()
+);
+
+create table if not exists models (
+  id             uuid primary key default gen_random_uuid(),
+  lead_id        uuid references leads(id) on delete cascade,
+  measurement_id uuid references measurements(id) on delete set null,
+  title          text,
+  notes          text,
+  file_urls      text[] default '{}',
+  uploaded_by    uuid,
+  status         text default 'Uploaded'
+                 check (status in ('Pending','Uploaded','Approved','Rejected')),
+  created_at     timestamptz not null default now()
+);
+
+create table if not exists projects (
+  id                 uuid primary key default gen_random_uuid(),
+  lead_id            uuid references leads(id) on delete cascade,
+  project_manager_id uuid references project_managers(id) on delete set null,
+  status             text default 'Pending'
+                     check (status in ('Pending','In Progress','Completed','On Hold')),
+  notes              text,
+  assigned_at        timestamptz default now(),
+  completed_at       timestamptz,
+  created_at         timestamptz not null default now()
+);
+
+-- ---------------------------------------------------------------------------
 -- Row Level Security (RLS)
 -- Supabase blocks inserts/selects when RLS is enabled but no policy exists
 -- (error: "new row violates row-level security policy ...").
@@ -189,7 +275,8 @@ begin
   foreach t in array array[
     'users', 'leads', 'lead_managers', 'conversions', 'earnings',
     'withdrawals', 'follow_ups', 'call_logs', 'notifications',
-    'partner', 'salesstaff'
+    'partner', 'salesstaff', 'telecallers', 'project_managers', 'site_visits',
+    'measurements', 'models', 'projects'
   ]
   loop
     -- skip tables that don't exist so the whole block can't abort

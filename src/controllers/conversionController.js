@@ -24,10 +24,19 @@ export const list = async (req, res, next) => {
     if (leadIds.length) {
       const { data: leads } = await supabase
         .from("leads")
-        .select("id, name, email, phone")
+        .select("id, name, email, phone, conversion_amount")
         .in("id", leadIds);
       (leads || []).forEach((l) => { leadsMap[l.id] = l; });
     }
+
+    // Latest available amount: the lead's conversion_amount is the single source
+    // of truth (written by the telecaller at conversion AND by Sales later, so it
+    // always holds the most recent value); fall back to the request's own amount.
+    const hasVal = (v) => v !== null && v !== undefined && v !== "";
+    const effectiveAmount = (c) => {
+      const leadAmt = leadsMap[c.lead_id]?.conversion_amount;
+      return hasVal(leadAmt) ? leadAmt : (hasVal(c.amount) ? c.amount : null);
+    };
 
     // sales_staff_id may reference the users table, the salesstaff table, or a
     // Supabase Auth user id (telecaller submissions). Resolve against all three
@@ -68,6 +77,8 @@ export const list = async (req, res, next) => {
       lead_name: leadsMap[c.lead_id]?.name || null,
       lead_email: leadsMap[c.lead_id]?.email || null,
       lead_phone: leadsMap[c.lead_id]?.phone || null,
+      lead_conversion_amount: leadsMap[c.lead_id]?.conversion_amount ?? null,
+      effective_amount: effectiveAmount(c),
       sales_staff_name: staffMap[c.sales_staff_id]?.name || null,
       sales_staff_email: staffMap[c.sales_staff_id]?.email || null,
       sales_staff_phone: staffMap[c.sales_staff_id]?.phone || null,
@@ -142,6 +153,33 @@ export const update = async (req, res, next) => {
     if (error) throw error;
     if (!data) return res.status(404).json({ message: "Conversion not found" });
     res.json({ message: "Conversion updated successfully", data });
+  } catch (err) {
+    next(err);
+  }
+};
+
+// PUT /conversions/:id/amount — Sales (or admin) sets the final conversion
+// amount + notes. Only touches amount/notes (cannot change status), so it's
+// safe to allow the sales role without risking approve/reject.
+export const updateAmount = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const { amount, notes } = req.body;
+    const updates = {};
+    if (amount !== undefined) updates.amount = amount === "" ? null : amount;
+    if (notes !== undefined) updates.notes = notes;
+    if (Object.keys(updates).length === 0) {
+      return res.status(400).json({ message: "No fields to update" });
+    }
+    const { data, error } = await supabase
+      .from("conversions")
+      .update(updates)
+      .eq("id", id)
+      .select()
+      .single();
+    if (error) throw error;
+    if (!data) return res.status(404).json({ message: "Conversion not found" });
+    res.json({ message: "Conversion amount updated successfully", data });
   } catch (err) {
     next(err);
   }

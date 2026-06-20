@@ -83,6 +83,22 @@ export const create = async (req, res, next) => {
       return res.status(400).json({ message: "name and phone are required" });
     }
 
+    // Provision a Supabase Auth login (phone + password), role "sales", so the
+    // member can log in to the Sales dashboard.
+    if (password) {
+      const d = digits(phone);
+      const loginEmail = email || (d ? `${d}@sales.flexifold.app` : null);
+      if (loginEmail) {
+        const { error: authError } = await supabase.auth.admin.createUser({
+          email: loginEmail,
+          password,
+          email_confirm: true,
+          user_metadata: { name, phoneNumber: phone, location: city, role: "sales" },
+        });
+        if (authError) console.warn("Could not create auth login for sales staff:", authError.message);
+      }
+    }
+
     const { data, error } = await supabase
       .from("salesstaff")
       .insert([{
@@ -161,7 +177,7 @@ export const resetPassword = async (req, res, next) => {
       password,
       name: staff.name,
       location: staff.city,
-      role: "telecaller",
+      role: "sales",
       domain: "sales.flexifold.app",
     });
 
